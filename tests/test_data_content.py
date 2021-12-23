@@ -4,7 +4,6 @@ Created on 2021-12-23 13:37
 
 @author: johannes
 """
-import pandas as pd
 import pathlib
 import pandas as pd
 
