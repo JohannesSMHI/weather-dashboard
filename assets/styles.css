@@ -1,0 +1,180 @@
+.js-plotly-plot .plotly .modebar {
+  padding-top: 5%;
+  margin-right: 3.5%;
+}
+
+body {
+  background-color: #161d33;
+  margin: 5%;
+  font-family: verdana;
+  color: #768DB7;
+}
+
+div {
+  color: #768DB7;
+  font-family: verdana;
+}
+
+.has-value.Select--single>.Select-control .Select-value .Select-value-label {
+  color: #768DB7;
+  font-color: #768DB7;
+}
+
+.Select--single > .Select-control .Select-value .Select-input .Select-placeholder {
+  color: #768DB7;
+  font-color: #768DB7;
+}
+
+.has-value.is-pseudo-focused.Select--single>.Select-control .Select-value .Select-value-label {
+  color: #768DB7;
+  font-color: #768DB7;
+}
+
+.Select-control {
+  background-color: #161d33;
+  color: #768DB7;
+  box-color: #1b2444;
+}
+
+.control--item {
+  background-color: transparent;
+  border-color: #525F89;
+  color: #768DB7;
+}
+
+.Select-menu-outer {
+  background-color: #161d33;
+  color: #768DB7;
+  box-color: #1b2444;
+}
+
+.two.columns {
+  width: 16.25%;
+}
+
+.column,
+.columns {
+  margin-left: 0.5%;
+}
+
+.pretty_container {
+  border-radius: 2px;
+  font-family: verdana;
+  background-color: #1b2444;
+  margin: 10px;
+  padding: 15px;
+  position: relative;
+  box-shadow: 2px 2px 2px #131929;
+}
+
+.mini_container {
+  border-radius: 2px;
+  background-color: #1b2444;
+  font-family: verdana;
+  margin: 10px;
+  padding: 15px;
+  position: relative;
+  box-shadow: 2px 2px 2px #131929;
+}
+
+.bare_container {
+  margin: 0 0 0 0;
+  padding: 0 0 0 0;
+}
+
+.dcc_control {
+  margin: 0;
+  background-color: #1b2444;
+  font-color: #768DB7;
+  font-family: verdana;
+  padding: 5px;
+  width: calc(100%-40px);
+}
+
+.control_label {
+  margin: 0;
+  padding: 10px;
+  padding-bottom: 0px;
+  margin-bottom: 0px;
+  width: calc(100%-40px);
+}
+
+.rc-slider {
+  margin-left: 0px;
+  padding-left: 0px;
+}
+
+.flex-display {
+  display: flex;
+}
+
+.container-display {
+  display: flex;
+}
+
+#individual_graph,
+#aggregate_graph {
+  width: calc(100% - 30px);
+  position: absolute;
+}
+
+#weather_graph {
+  position: relative;
+  background-color: #1b2444;
+  #height: calc(100% - 30px);
+  #width: calc(100% - 30px);
+}
+
+#weatherGraphContainer {
+  background-color: #1b2444;
+  flex: 5;
+  position: relative;
+}
+
+#header {
+  align-items: center;
+}
+
+#title {
+  text-align: center;
+}
+
+#right-column {
+  display: flex;
+  flex-direction: column;
+}
+
+#id_outtemp {
+  flex: 1;
+}
+
+#id_winsp {
+  flex: 1;
+}
+
+#id_raind {
+  flex: 1;
+}
+
+#id_presabs {
+  flex: 1;
+}
+
+#aggregate_data {
+  align-items: center;
+}
+
+#tripleContainer {
+  display: flex;
+  flex: 3;
+}
+
+#mainContainer {
+  display: flex;
+  flex-direction: column;
+}
+
+#pie_graph > div > div > svg:nth-child(3) > g.infolayer > g.legend {
+  pointer-events: all;
+  transform: translate(30px, 349px);
+}
