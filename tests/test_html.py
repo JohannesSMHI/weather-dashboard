@@ -41,3 +41,20 @@ Created on 2021-12-23 15:09
                         ]
                     ),
 """
+import dash_leaflet as dl
+from dash import Dash, html
+
+# Cool, dark tiles by Stadia Maps.
+url = 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png'
+attribution = '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> '
+# Create app.
+app = Dash()
+app.layout = html.Div([
+    dl.Map(dl.TileLayer(url=url, maxZoom=20, attribution=attribution))
+], style={
+    'width': '100%', 'height': '100vh', 'margin': "auto", "display": "block", "position": "relative",
+    # 'width': '100%', "display": "flex",'margin': "auto"
+})
+
+if __name__ == '__main__':
+    app.run_server()

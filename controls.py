@@ -6,7 +6,7 @@ Created on 2021-12-23 13:27
 """
 
 TILE_URL = 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png'
-TILE_ATTRB = '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>'
+TILE_ATTRB = '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> '
 
 TIME_FIELDS = dict(
     timestamp='Tidsstämpel',
