@@ -105,23 +105,47 @@ def serve_layout():
                 [
                     html.Div(
                         [
-                            html.P("Välj parameter:", className="control_label"),
-                            dcc.Dropdown(
-                                id="parameters",
-                                options=parameter_options,
-                                # multi=True,
-                                value=list(PARAMETERS)[0],
-                                className="dcc_control",
-                                style={
-                                    'color': '#768DB7',
-                                    'background-color': '#1b2444',
-                                    'font-color': '#768DB7',
-                                    'border-color': '#768DB7',
-                                }
+                            html.Div(
+                                [
+                                    html.P("Välj parameter:", className="control_label"),
+                                    dcc.Dropdown(
+                                        id="parameters",
+                                        options=parameter_options,
+                                        # multi=True,
+                                        value=list(PARAMETERS)[0],
+                                        className="dcc_control",
+                                        style={
+                                            'color': '#768DB7',
+                                            'background-color': '#1b2444',
+                                            'font-color': '#768DB7',
+                                            'border-color': '#768DB7',
+                                        }
+                                    )
+                                ],
+                                className="mini_container",
+                                id="cross-filter-options",
+                            ),
+                            html.Div(
+                                [
+                                    leaflet.Map(children=[
+                                        leaflet.TileLayer(url=TILE_URL, #maxZoom=11,
+                                                          attribution=TILE_ATTRB),
+                                        leaflet.CircleMarker(center=[57.386052, 12.295565],
+                                                             color='#33ffe6', children=[leaflet.Tooltip("Utmaderna")])
+                                    ], center=[57.354, 12.209], zoom=10,
+                                        style={
+                                            'width': '100%', 'height': '50vh', 'margin': "auto",
+                                            "display": "flex", "position": "relative",
+                                            "flexDirection": "column"
+                                        }
+                                    ),
+                                ],
+                                className="pretty_container",
+                                id="station-map",
                             )
                         ],
-                        className="pretty_container four columns",
-                        id="cross-filter-options",
+                        id="left-column",
+                        className="four columns",
                     ),
                     html.Div(
                         [
