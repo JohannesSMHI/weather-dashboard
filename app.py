@@ -132,7 +132,7 @@ def serve_layout():
                                                           attribution=TILE_ATTRB),
                                         leaflet.CircleMarker(center=[57.386052, 12.295565],
                                                              color='#33ffe6', children=[leaflet.Tooltip("Utmaderna")])
-                                    ], center=[57.354, 12.209], zoom=10,
+                                    ], center=[57.354, 12.209], zoom=8,
                                         style={
                                             'width': '100%', 'height': '50vh', 'margin': "auto",
                                             "display": "flex", "position": "relative",
