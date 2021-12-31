@@ -121,11 +121,20 @@ div {
 #weather_graph {
   position: relative;
   background-color: #1b2444;
-  #height: calc(100% - 30px);
-  #width: calc(100% - 30px);
 }
 
 #weatherGraphContainer {
+  background-color: #1b2444;
+  flex: 5;
+  position: relative;
+}
+
+#wind_rose_graph {
+  position: relative;
+  background-color: #1b2444;
+}
+
+#WindRoseGraphContainer {
   background-color: #1b2444;
   flex: 5;
   position: relative;
@@ -140,6 +149,11 @@ div {
 }
 
 #right-column {
+  display: flex;
+  flex-direction: column;
+}
+
+#left-column {
   display: flex;
   flex-direction: column;
 }
@@ -172,9 +186,4 @@ div {
 #mainContainer {
   display: flex;
   flex-direction: column;
-}
-
-#pie_graph > div > div > svg:nth-child(3) > g.infolayer > g.legend {
-  pointer-events: all;
-  transform: translate(30px, 349px);
 }
