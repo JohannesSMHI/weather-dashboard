@@ -5,9 +5,11 @@ Created on 2021-12-23 13:27
 @author: johannes
 """
 import copy
+import json
 import pathlib
 import dash
 import pandas as pd
+from flask import request, jsonify
 from dash.dependencies import Input, Output, State, ClientsideFunction
 from dash import dcc
 from dash import html
@@ -22,6 +24,7 @@ from controls import (
     TILE_URL,
     TILE_ATTRB,
 )
+from api_handler.handler import DataHandler
 
 PATH = pathlib.Path(__file__).parent
 DATA_PATH = PATH.joinpath("data").resolve()
@@ -32,6 +35,31 @@ app = dash.Dash(
 )
 app.title = "Gällingeväder"
 server = app.server
+api_handler = DataHandler(time_zone='Europe/Stockholm')
+
+
+@server.route('/time_log/', methods=['GET'])
+def get_time_log():
+    """GET database time log."""
+    recent = request.args.get('recent')
+    key = request.args.get('utmid')
+    if recent:
+        log = api_handler.get_recent_time_log()
+    else:
+        log = api_handler.get_time_log()
+    return jsonify({'time_log': log})
+
+
+@server.route('/import/', methods=['PUT'])
+def import_data():
+    """POST data to database."""
+    key = request.args.get('utmid')
+    record = json.loads(request.data)
+    print(record)
+    print(key)
+    # if kwargs['body'].get('utmid'):
+    #     api_handler.post(**kwargs['body'])
+
 
 # Create controls
 parameter_options = [
