@@ -12,7 +12,9 @@ from dash.dependencies import Input, Output, State, ClientsideFunction
 from dash import dcc
 from dash import html
 import dash_leaflet as leaflet
+import plotly.express as px
 
+import windy
 from controls import (
     PARAMETERS,
     UNITS,
@@ -126,23 +128,28 @@ def serve_layout():
                                 id="cross-filter-options",
                             ),
                             html.Div(
-                                [
-                                    leaflet.Map(children=[
-                                        leaflet.TileLayer(url=TILE_URL, #maxZoom=11,
-                                                          attribution=TILE_ATTRB),
-                                        leaflet.CircleMarker(center=[57.386052, 12.295565],
-                                                             color='#33ffe6', children=[leaflet.Tooltip("Utmaderna")])
-                                    ], center=[57.354, 12.209], zoom=10,
-                                        style={
-                                            'width': '100%', 'height': '50vh', 'margin': "auto",
-                                            "display": "flex", "position": "relative",
-                                            "flexDirection": "column"
-                                        }
-                                    ),
-                                ],
+                                [dcc.Graph(id="wind_rose_graph")],
+                                id="WindRoseGraphContainer",
                                 className="pretty_container",
-                                id="station-map",
-                            )
+                            ),
+                            # html.Div(
+                            #     [
+                            #         leaflet.Map(children=[
+                            #             leaflet.TileLayer(url=TILE_URL, #maxZoom=11,
+                            #                               attribution=TILE_ATTRB),
+                            #             leaflet.CircleMarker(center=[57.386052, 12.295565],
+                            #                                  color='#33ffe6', children=[leaflet.Tooltip("Utmaderna")])
+                            #         ], center=[57.354, 12.209], zoom=8,
+                            #             style={
+                            #                 'width': '100%', 'height': '50vh', 'margin': "auto",
+                            #                 "display": "flex", "position": "relative",
+                            #                 "flexDirection": "column"
+                            #             }
+                            #         ),
+                            #     ],
+                            #     className="pretty_container",
+                            #     id="station-map",
+                            # )
                         ],
                         id="left-column",
                         className="four columns",
@@ -196,6 +203,11 @@ def serve_layout():
                                 id="weatherGraphContainer",
                                 className="pretty_container",
                             ),
+                            # html.Div(
+                            #     [dcc.Graph(id="wind_rose_graph")],
+                            #     id="WindRoseGraphContainer",
+                            #     className="pretty_container",
+                            # ),
                         ],
                         id="right-column",
                         className="eight columns",
@@ -222,15 +234,26 @@ def filter_dataframe(df, parameter):
     ]
 
 
+def filter_wind_rose(df):
+    """Doc."""
+    boolean = ~pd.isnull(df['winsp']) & ~pd.isnull(df['windir']) & (df['winsp'] > 0.)
+    df_wind = df.loc[boolean, ['winsp', 'windir']].reset_index(drop=True)
+    df_wind['direction'] = df_wind['windir'].apply(lambda x: windy.get_direction(x))
+    df_wind['strength'] = df_wind['winsp'].apply(lambda x: windy.get_speed_range(x))
+    return windy.get_windframe(df_wind)
+
+
 # Create callbacks
 app.clientside_callback(
     ClientsideFunction(namespace="clientside", function_name="resize"),
     Output("output-clientside", "children"),
-    [Input("weather_graph", "figure")],
+    [
+        Input("weather_graph", "figure"),
+        Input("wind_rose_graph", "figure")
+    ],
 )
 
 
-# Selectors -> count graph
 @app.callback(
     Output("weather_graph", "figure"),
     [
@@ -273,6 +296,48 @@ def make_figure(parameters):  #, timeing):
     layout_count["showlegend"] = False
 
     figure = dict(data=data, layout=layout_count)
+    return figure
+
+
+@app.callback(
+    Output("wind_rose_graph", "figure"),
+    [
+        Input("parameters", "value"),
+        # Input("timeing", "value"),
+    ],
+)
+def make_wind_rose_figure(parameters):  #, timeing):
+    """Doc."""
+    df_selected = filter_wind_rose(df)
+
+    figure = px.bar_polar(
+        r=df_selected["frequency"], theta=df_selected["direction"], color=df_selected["strength"],
+        color_discrete_sequence=px.colors.sequential.Viridis,
+    )
+    figure.update_polars(
+        bgcolor='#1b2444',
+        angularaxis=dict(
+            showline=True,
+            linecolor='#768DB7',
+            gridcolor="#768DB7"
+        ),
+        radialaxis=dict(
+            side="counterclockwise",
+            showline=True,
+            linecolor='#768DB7',
+            gridcolor="#768DB7",
+        )
+    )
+    figure.update_layout(
+        {
+         'margin': {'l': 60, 'r': 30, 'b': 20, 't': 40},
+         'legend': {'font': {'size': 10}, 'orientation': 'h'},
+         'title': 'Vindrosett',
+         'paper_bgcolor': '#1b2444',
+         'plot_bgcolor': '#1b2444',
+         'font': {'family': 'verdana', 'color': '#768DB7'}}
+    )
+
     return figure
 
 
