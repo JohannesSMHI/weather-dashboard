@@ -29,18 +29,14 @@ from controls import (
 from data_handler.handler import DataBaseHandler, DataHandler
 load_dotenv()
 
-# PATH = pathlib.Path(__file__).parent
-# DATA_PATH = PATH.joinpath("data").resolve()
-# df = pd.read_feather(DATA_PATH.joinpath('testdata'))
-# df['timestamp'] = df['timestamp'].apply(pd.Timestamp)
 
 db_handler = DataBaseHandler(time_zone='Europe/Stockholm')
-db_handler.start_time = 'quartile'
+# db_handler.start_time = 'quartile'
+db_handler.start_time = 'halfyear'
 db_handler.end_time = 'now'
 
-DataHandler()
-DataHandler.update_data(data=db_handler.get_data_for_time_period())
-print(DataHandler.df)
+data_source = DataHandler(data=db_handler.get_data_for_time_period())
+
 app = dash.Dash(
     __name__,
     meta_tags=[{"name": "viewport", "content": "width=device-width"}],
@@ -106,14 +102,14 @@ layout = dict(
 
 
 def get_last_timestamp_text():
-    return "Senaste mätvärde: {}".format(DataHandler.df["timestamp"].iloc[-1].strftime('%Y-%m-%d  %H:%M'))
+    return "Senaste mätvärde: {}".format(data_source.df["timestamp"].iloc[-1].strftime('%Y-%m-%d  %H:%M'))
 
 
 def get_last_parameter_value(parameter):
-    if pd.isnull(DataHandler.df[parameter].iloc[-1]):
+    if pd.isnull(data_source.df[parameter].iloc[-1]):
         return '-'
     else:
-        return str(DataHandler.df[parameter].iloc[-1])
+        return str(data_source.df[parameter].iloc[-1])
 
 
 def serve_layout():
@@ -268,7 +264,7 @@ app.layout = serve_layout
 def filter_dataframe(df, parameter):
     """Doc."""
     # boolean = df['timestamp'] >= pd.Timestamp('2021-11-29')
-    boolean = df['timestamp'].dt.date == pd.Timestamp('2020-08-10')
+    boolean = df['timestamp'].dt.date == pd.Timestamp('2021-08-10')
     return df.loc[
         boolean,
         ['timestamp', parameter]
@@ -304,18 +300,16 @@ app.clientside_callback(
 )
 def make_figure(parameters):  #, timeing):
     """Doc."""
+    df_selected = filter_dataframe(data_source.df, parameters)
     layout_count = copy.deepcopy(layout)
-
-    g = filter_dataframe(DataHandler.df, parameters)
-    g.index = g["timestamp"]
-    y_parameter = g.columns[1]
-
+    y_parameter = df_selected.columns[1]
+    df_selected.index = df_selected["timestamp"]
     data = [
         dict(
             type="scatter",
             mode="markers",
-            x=g.index,
-            y=g[y_parameter],
+            x=df_selected.index,
+            y=df_selected[y_parameter],
             name=UNITS.get(y_parameter, ''),
             opacity=0,
             hoverinfo="skip",
@@ -325,8 +319,8 @@ def make_figure(parameters):  #, timeing):
             mode="lines+markers",
             line=dict(shape="spline", smoothing=2, width=1, color="#33ffe6"),
             marker=dict(symbol="circle-open"),
-            x=g.index,
-            y=g[y_parameter],
+            x=df_selected.index,
+            y=df_selected[y_parameter],
             name=UNITS.get(y_parameter, ''),
         ),
     ]
@@ -349,7 +343,7 @@ def make_figure(parameters):  #, timeing):
 )
 def make_wind_rose_figure(parameters):  #, timeing):
     """Doc."""
-    df_selected = filter_wind_rose(DataHandler.df)
+    df_selected = filter_wind_rose(data_source.df)
 
     figure = px.bar_polar(
         r=df_selected["frequency"], theta=df_selected["direction"], color=df_selected["strength"],
