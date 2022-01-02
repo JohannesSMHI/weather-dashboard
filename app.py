@@ -45,14 +45,14 @@ app.title = "Gällingeväder"
 server = app.server
 
 
-@server.route('/time_log', methods=['GET'])
+@server.route('/time_log/', methods=['GET'])
 def get_time_log():
     """GET database time log."""
     headers = request.headers
     auth = headers.get('api_key')
     if auth == os.getenv('API_ACCESS_KEY'):
         recent = request.args.get('recent')
-        if recent:
+        if recent and recent != 'false':
             log = db_handler.get_recent_time_log()
         else:
             log = db_handler.get_time_log()
@@ -61,7 +61,7 @@ def get_time_log():
         return jsonify({"message": "ERROR: Unauthorized"}), 401
 
 
-@server.route('/import', methods=['PUT'])
+@server.route('/import/', methods=['PUT'])
 def import_data():
     """POST data to database."""
     headers = request.headers
