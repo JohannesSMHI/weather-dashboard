@@ -106,13 +106,17 @@ layout = dict(
 
 
 def get_last_timestamp_text():
+    """Doc."""
     try:
-        return "Senaste mätvärde: {}".format(data_source.df["timestamp"].iloc[-1].strftime('%Y-%m-%d  %H:%M'))
+        return "Senaste mätvärde: {}".format(
+            data_source.df["timestamp"].iloc[-1].strftime('%Y-%m-%d  %H:%M')
+        )
     except TypeError:
         return "Inga mätvärden ännu."
 
 
 def get_last_parameter_value(parameter):
+    """Doc."""
     try:
         if pd.isnull(data_source.df[parameter].iloc[-1]):
             return '-'
@@ -123,6 +127,7 @@ def get_last_parameter_value(parameter):
 
 
 def serve_layout():
+    """Doc."""
     return html.Div(
         [
             dcc.Store(id="aggregate_data"),
@@ -260,10 +265,11 @@ def serve_layout():
                     html.Div(
                         [
                             leaflet.Map(children=[
-                                leaflet.TileLayer(url=TILE_URL, #maxZoom=11,
+                                leaflet.TileLayer(url=TILE_URL,  # maxZoom=11,
                                                   attribution=TILE_ATTRB),
                                 leaflet.CircleMarker(center=[57.386052, 12.295565],
-                                                     color='#33ffe6', children=[leaflet.Tooltip("Utmaderna")])
+                                                     color='#33ffe6',
+                                                     children=[leaflet.Tooltip("Utmaderna")])
                             ], center=[57.354, 12.209], zoom=8,
                                 style={
                                     'width': '100%', 'height': '50vh', 'margin': "auto",
@@ -289,18 +295,9 @@ def serve_layout():
     )
 
 
-app.layout = serve_layout
-
-
-def filter_dataframe(df, parameter, timing):
+def filter_dataframe(df, parameter):
     """Doc."""
     return df[['timestamp', parameter]]
-    # boolean = df['timestamp'] >= pd.Timestamp('2021-11-29')
-    # boolean = df['timestamp'].dt.date == pd.Timestamp('2021-08-10')
-    # return df.loc[
-    #     boolean,
-    #     ['timestamp', parameter]
-    # ]
 
 
 def filter_wind_rose(df):
@@ -311,6 +308,8 @@ def filter_wind_rose(df):
     df_wind['strength'] = df_wind['winsp'].apply(lambda x: windy.get_speed_range(x))
     return windy.get_windframe(df_wind)
 
+
+app.layout = serve_layout
 
 # Create callbacks
 app.clientside_callback(
@@ -346,7 +345,7 @@ def make_figure(parameters, timing):
     """Doc."""
     while db_handler.app_timing != timing:
         time.sleep(0.1)
-    df_selected = filter_dataframe(data_source.df, parameters, timing)
+    df_selected = filter_dataframe(data_source.df, parameters)
     layout_count = copy.deepcopy(layout)
     y_parameter = df_selected.columns[1]
     df_selected.index = df_selected["timestamp"]
