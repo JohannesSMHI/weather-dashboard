@@ -9,11 +9,10 @@ import time
 from dotenv import load_dotenv
 import copy
 import json
-import pathlib
 import dash
 import pandas as pd
 from flask import request, jsonify
-from dash.dependencies import Input, Output, State, ClientsideFunction
+from dash.dependencies import Input, Output, ClientsideFunction
 from dash import dcc
 from dash import html
 import dash_leaflet as leaflet
@@ -24,7 +23,6 @@ from controls import (
     PARAMETERS,
     TIMING_OPTIONS,
     UNITS,
-    TIME_FIELDS,
     TILE_URL,
     TILE_ATTRB,
 )
