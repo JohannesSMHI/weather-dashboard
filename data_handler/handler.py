@@ -19,19 +19,16 @@ def get_db_conn():
 class DataHandler:
     """Doc."""
 
-    df = pd.DataFrame()
-    boolean = True
+    def __init__(self, *args, **kwargs):
+        self.df = None
+        if 'data' in kwargs:
+            self.update_data(**kwargs)
 
-    def __init__(self, *args, data=pd.DataFrame(), **kwargs):
+    def update_data(self, *args, data=pd.DataFrame(), **kwargs):
+        """Update dataframe."""
         if not data.empty:
             data['timestamp'] = data['timestamp'].apply(pd.Timestamp)
             self.df = data
-            print(self.df)
-
-    @classmethod
-    def update_data(cls, *args, **kwargs):
-        """Update dataframe."""
-        return cls(*args, **kwargs)
 
 
 class DataBaseHandler:
@@ -144,3 +141,13 @@ class DataBaseHandler:
             self._end_time = pd.Timestamp.today(tz=self.time_zone).strftime('%Y-%m-%d %H:%M:%S')
         else:
             self._end_time = pd.Timestamp(period).strftime('%Y-%m-%d %H:%M:%S')
+
+
+if __name__ == "__main__":
+    db_handler = DataBaseHandler(time_zone='Europe/Stockholm')
+    db_handler.start_time = 'halfyear'
+    db_handler.end_time = 'now'
+
+    data_source = DataHandler(data=db_handler.get_data_for_time_period())
+
+    boolean = data_source.df['timestamp'].dt.date == pd.Timestamp('2021-08-10')
