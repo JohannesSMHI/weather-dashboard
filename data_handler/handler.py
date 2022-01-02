@@ -39,9 +39,11 @@ class DataBaseHandler:
         base = Path(__file__).parent
         with open(base.joinpath('resources/parameters.yaml').resolve()) as fd:
             data = yaml.load(fd, Loader=yaml.FullLoader)
+
         self.db_fields = set(data.get('db_fields'))
         self._start_time = None
         self._end_time = None
+        self._app_timing = None
 
     def post(self, **kwargs):
         """Doc."""
@@ -128,7 +130,7 @@ class DataBaseHandler:
         elif period == 'fullyear':
             self._start_time = (self.today - pd.Timedelta(days=365)).strftime('%Y-%m-%d %H:%M:%S')
         elif period == 'thisyear':
-            self._start_time = pd.Timestamp(f'{self.today.year}-01-01').strftime('%Y-%m-%d %H:%M:%S')
+            self._start_time = pd.Timestamp(f'{self.today.year}0101').strftime('%Y-%m-%d %H:%M:%S')
 
     @property
     def end_time(self):
@@ -142,12 +144,19 @@ class DataBaseHandler:
         else:
             self._end_time = pd.Timestamp(period).strftime('%Y-%m-%d %H:%M:%S')
 
+    @property
+    def app_timing(self):
+        """Return app time spec."""
+        return self._app_timing
+
+    @app_timing.setter
+    def app_timing(self, timing):
+        self._app_timing = timing
+
 
 if __name__ == "__main__":
     db_handler = DataBaseHandler(time_zone='Europe/Stockholm')
     db_handler.start_time = 'halfyear'
     db_handler.end_time = 'now'
-
     data_source = DataHandler(data=db_handler.get_data_for_time_period())
-
     boolean = data_source.df['timestamp'].dt.date == pd.Timestamp('2021-08-10')

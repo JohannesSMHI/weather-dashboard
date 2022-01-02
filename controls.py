@@ -16,6 +16,18 @@ TIME_FIELDS = dict(
     hour='Timma',
 )
 
+
+TIMING_OPTIONS = dict(
+    day='24h',
+    week='Vecka',
+    month='Månad',
+    quartile='Kvartal',
+    halfyear='Halvår',
+    fullyear='Helår',
+    thisyear='I år',
+)
+
+
 PARAMETERS = dict(
     intemp='Temperatur - Inne',
     outtemp='Temperatur - Ute',

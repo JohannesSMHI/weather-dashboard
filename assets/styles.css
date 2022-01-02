@@ -15,6 +15,18 @@ div {
   font-family: verdana;
 }
 
+.radio-labels {
+    color: #2BFEBE;
+}
+.radio-labels.radio-labels-checked {
+    color: #2BFEBE;
+}
+
+input[type="radio" i] {
+    border: 1px solid #5C8CBE;
+    color: #2BFEBE;
+}
+
 .has-value.Select--single>.Select-control .Select-value .Select-value-label {
   color: #768DB7;
   font-color: #768DB7;
