@@ -1,0 +1,21 @@
+db_fields:
+  - timestamp
+  - year
+  - month
+  - day
+  - hour
+  - intemp
+  - outtemp
+  - outhumi
+  - outdew
+  - outfeel
+  - winsp
+  - gust
+  - windir
+  - presabs
+  - presrel
+  - rainh
+  - raind
+  - rainw
+  - rainm
+  - raint

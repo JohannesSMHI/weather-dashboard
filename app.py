@@ -4,10 +4,14 @@ Created on 2021-12-23 13:27
 
 @author: johannes
 """
+import os
+from dotenv import load_dotenv
 import copy
+import json
 import pathlib
 import dash
 import pandas as pd
+from flask import request, jsonify
 from dash.dependencies import Input, Output, State, ClientsideFunction
 from dash import dcc
 from dash import html
@@ -22,10 +26,21 @@ from controls import (
     TILE_URL,
     TILE_ATTRB,
 )
+from data_handler.handler import DataBaseHandler, DataHandler
+load_dotenv()
 
-PATH = pathlib.Path(__file__).parent
-DATA_PATH = PATH.joinpath("data").resolve()
+# PATH = pathlib.Path(__file__).parent
+# DATA_PATH = PATH.joinpath("data").resolve()
+# df = pd.read_feather(DATA_PATH.joinpath('testdata'))
+# df['timestamp'] = df['timestamp'].apply(pd.Timestamp)
 
+db_handler = DataBaseHandler(time_zone='Europe/Stockholm')
+db_handler.start_time = 'quartile'
+db_handler.end_time = 'now'
+
+DataHandler()
+DataHandler.update_data(data=db_handler.get_data_for_time_period())
+print(DataHandler.df)
 app = dash.Dash(
     __name__,
     meta_tags=[{"name": "viewport", "content": "width=device-width"}],
@@ -33,14 +48,40 @@ app = dash.Dash(
 app.title = "Gällingeväder"
 server = app.server
 
+
+@server.route('/time_log', methods=['GET'])
+def get_time_log():
+    """GET database time log."""
+    headers = request.headers
+    auth = headers.get('api_key')
+    if auth == os.getenv('API_ACCESS_KEY'):
+        recent = request.args.get('recent')
+        if recent:
+            log = db_handler.get_recent_time_log()
+        else:
+            log = db_handler.get_time_log()
+        return jsonify({'time_log': log}), 200
+    else:
+        return jsonify({"message": "ERROR: Unauthorized"}), 401
+
+
+@server.route('/import', methods=['PUT'])
+def import_data():
+    """POST data to database."""
+    headers = request.headers
+    auth = headers.get('api_key')
+    if auth == os.getenv('API_ACCESS_KEY'):
+        record = json.loads(request.data)
+        db_handler.post(**record)
+        return jsonify({"message": "OK: data imported"}), 200
+    else:
+        return jsonify({"message": "ERROR: Unauthorized"}), 401
+
+
 # Create controls
 parameter_options = [
     {"label": str(PARAMETERS[para]), "value": str(para)} for para in PARAMETERS
 ]
-
-# Load data
-df = pd.read_feather(DATA_PATH.joinpath('testdata'))
-df['timestamp'] = df['timestamp'].apply(pd.Timestamp)
 
 layout = dict(
     autosize=True,
@@ -65,14 +106,14 @@ layout = dict(
 
 
 def get_last_timestamp_text():
-    return "Senaste mätvärde: {}".format(df["timestamp"].iloc[-1].strftime('%Y-%m-%d  %H:%M'))
+    return "Senaste mätvärde: {}".format(DataHandler.df["timestamp"].iloc[-1].strftime('%Y-%m-%d  %H:%M'))
 
 
 def get_last_parameter_value(parameter):
-    if pd.isnull(df[parameter].iloc[-1]):
+    if pd.isnull(DataHandler.df[parameter].iloc[-1]):
         return '-'
     else:
-        return str(df[parameter].iloc[-1])
+        return str(DataHandler.df[parameter].iloc[-1])
 
 
 def serve_layout():
@@ -265,7 +306,7 @@ def make_figure(parameters):  #, timeing):
     """Doc."""
     layout_count = copy.deepcopy(layout)
 
-    g = filter_dataframe(df, parameters)
+    g = filter_dataframe(DataHandler.df, parameters)
     g.index = g["timestamp"]
     y_parameter = g.columns[1]
 
@@ -308,7 +349,7 @@ def make_figure(parameters):  #, timeing):
 )
 def make_wind_rose_figure(parameters):  #, timeing):
     """Doc."""
-    df_selected = filter_wind_rose(df)
+    df_selected = filter_wind_rose(DataHandler.df)
 
     figure = px.bar_polar(
         r=df_selected["frequency"], theta=df_selected["direction"], color=df_selected["strength"],
