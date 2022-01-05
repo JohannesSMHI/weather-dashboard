@@ -7,6 +7,7 @@ Created on 2021-12-23 13:27
 import os
 import time
 from dotenv import load_dotenv
+from pathlib import Path
 import copy
 import json
 import dash
@@ -24,11 +25,9 @@ from controls import (
     TIMING_OPTIONS,
     UNITS,
     TILE_URL,
-    TILE_ATTRB,
 )
 from data_handler.handler import DataBaseHandler, DataHandler
-load_dotenv()
-
+load_dotenv(dotenv_path=Path(__file__).parent.joinpath('.env'))
 
 db_handler = DataBaseHandler(time_zone='Europe/Stockholm')
 start_timing = 'day'
@@ -265,8 +264,7 @@ def serve_layout():
                     html.Div(
                         [
                             leaflet.Map(children=[
-                                leaflet.TileLayer(url=TILE_URL,  # maxZoom=11,
-                                                  attribution=TILE_ATTRB),
+                                leaflet.TileLayer(url=TILE_URL),  # maxZoom=11,
                                 leaflet.CircleMarker(center=[57.386052, 12.295565],
                                                      color='#33ffe6',
                                                      children=[leaflet.Tooltip("Utmaderna")])
