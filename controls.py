@@ -5,7 +5,8 @@ Created on 2021-12-23 13:27
 @author: johannes
 """
 
-TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_nolabels/{z}/{x}/{y}.png'
+TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'
+# TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_nolabels/{z}/{x}/{y}.png'
 
 TIME_FIELDS = dict(
     timestamp='Tidsstämpel',
@@ -17,7 +18,8 @@ TIME_FIELDS = dict(
 
 
 TIMING_OPTIONS = dict(
-    day='24h',
+    day='24h (+ prognos)',
+    days3='3 dagar (+ prognos)',
     week='Vecka',
     month='Månad',
     quartile='Kvartal',
@@ -44,6 +46,19 @@ PARAMETERS = dict(
     rainm='Regn - Månad',
     raint='Regn - Totalt',
 )
+
+
+FORECAST_PARAMETERS = {
+    'timestamp',
+    'outtemp',
+    'outhumi',
+    'winsp',
+    'gust',
+    'windir',
+    'presrel',
+    'rainh',
+}
+
 
 UNITS = dict(
     intemp='°C',

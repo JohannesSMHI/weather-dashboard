@@ -22,18 +22,20 @@ import plotly.express as px
 import windy
 from controls import (
     PARAMETERS,
+    FORECAST_PARAMETERS,
     TIMING_OPTIONS,
     UNITS,
     TILE_URL,
 )
-from data_handler.handler import DataBaseHandler, DataHandler
+from data_handler.handler import DataBaseHandler, ForecastHandler
 load_dotenv(dotenv_path=Path(__file__).parent.joinpath('.env'))
 
+
+fc_handler = ForecastHandler(time_zone='Europe/Stockholm')
 db_handler = DataBaseHandler(time_zone='Europe/Stockholm')
 start_timing = 'day'
 db_handler.start_time = start_timing
 db_handler.end_time = 'now'
-data_source = DataHandler(data=db_handler.get_data_for_time_period())
 db_handler.app_timing = start_timing
 
 app = dash.Dash(
@@ -48,7 +50,7 @@ server = app.server
 def get_time_log():
     """GET database time log."""
     headers = request.headers
-    auth = headers.get('api_key')
+    auth = headers.get('apikey')
     if auth == os.getenv('API_ACCESS_KEY'):
         recent = request.args.get('recent')
         if recent and recent != 'false':
@@ -64,7 +66,7 @@ def get_time_log():
 def import_data():
     """POST data to database."""
     headers = request.headers
-    auth = headers.get('api_key')
+    auth = headers.get('apikey')
     if auth == os.getenv('API_ACCESS_KEY'):
         record = json.loads(request.data)
         db_handler.post(**record)
@@ -87,7 +89,12 @@ layout = dict(
     automargin=True,
     margin=dict(l=60, r=30, b=20, t=40),
     hovermode="closest",
-    legend=dict(font=dict(size=10), orientation="h"),
+    legend=dict(
+        font=dict(size=12),
+        orientation="h",
+        x=0,
+        y=0.99,
+    ),
     title="Översikt",
     paper_bgcolor='#1b2444',
     plot_bgcolor='#1b2444',
@@ -108,7 +115,9 @@ def get_last_timestamp_text():
     """Doc."""
     try:
         return "Senaste mätvärde: {}".format(
-            data_source.df["timestamp"].iloc[-1].strftime('%Y-%m-%d  %H:%M')
+            pd.Timestamp(
+                db_handler.get_last_timestamp()
+            ).strftime('%Y-%m-%d  %H:%M')
         )
     except TypeError:
         return "Inga mätvärden ännu."
@@ -117,10 +126,10 @@ def get_last_timestamp_text():
 def get_last_parameter_value(parameter):
     """Doc."""
     try:
-        if pd.isnull(data_source.df[parameter].iloc[-1]):
+        if pd.isnull(db_handler.get_last_parameter_value(parameter)):
             return '-'
         else:
-            return str(data_source.df[parameter].iloc[-1])
+            return f'{db_handler.get_last_parameter_value(parameter)} {UNITS.get(parameter)}'
     except TypeError:
         return '-'
 
@@ -137,9 +146,18 @@ def serve_layout():
                         [
                             html.Div(
                                 [
+                                    html.Div(
+                                        className="div-logo",
+                                        children=html.Img(
+                                            className="logo",
+                                            src=app.get_asset_url(
+                                                "utm_weather_icon5.png")
+                                        ),
+                                    ),
                                     html.H1(
-                                        "Väderstation - Utmaderna",
-                                        style={"marginBottom": "0px"},
+                                        "Utmadernas väderstation",
+                                        style={"marginBottom": "0px",
+                                               'textAlign': 'center'},
                                     ),
                                     html.H6(get_last_timestamp_text()),
                                 ]
@@ -161,7 +179,7 @@ def serve_layout():
                             dcc.Dropdown(
                                 id="parameters",
                                 options=parameter_options,
-                                value=list(PARAMETERS)[0],
+                                value=list(PARAMETERS)[1],
                                 className="dcc_control",
                                 style={
                                     'color': '#768DB7',
@@ -293,13 +311,38 @@ def serve_layout():
     )
 
 
-def filter_dataframe(df, parameter):
+def filter_dataframe(parameter, timing):
     """Doc."""
-    return df[['timestamp', parameter]]
+    if parameter != 'presrel':
+        # Dummy fix.
+        para = parameter
+    else:
+        para = 'presabs'
+    df = db_handler.get_parameter_data_for_time_period(
+        'timestamp', para, time_period=timing
+    )
+    if parameter == 'presrel':
+        # Dummy fix. 56 m above sea level = + 7 hpa for the relative pressure.
+        df[para] += 7
+        df.rename(columns={para: parameter}, inplace=True)
+    df['timestamp'] = df['timestamp'].apply(pd.Timestamp)
+    return df
 
 
-def filter_wind_rose(df):
+def filter_forecast(parameter, timing):
     """Doc."""
+    df = fc_handler.get_parameter_data_for_time_period(
+        'timestamp', parameter, time_period=timing
+    )
+    df['timestamp'] = df['timestamp'].apply(pd.Timestamp)
+    return df
+
+
+def filter_wind_rose(timing):
+    """Doc."""
+    df = db_handler.get_parameter_data_for_time_period(
+        'winsp', 'windir', time_period=timing
+    )
     boolean = ~pd.isnull(df['winsp']) & ~pd.isnull(df['windir']) & (df['winsp'] > 0.)
     df_wind = df.loc[boolean, ['winsp', 'windir']].reset_index(drop=True)
     df_wind['direction'] = df_wind['windir'].apply(lambda x: windy.get_direction(x))
@@ -327,7 +370,6 @@ app.clientside_callback(
 def input_triggers_spinner(timing):
     """Doc."""
     db_handler.start_time = timing
-    data_source.update_data(data=db_handler.get_data_for_time_period())
     db_handler.app_timing = timing
     return None
 
@@ -339,39 +381,40 @@ def input_triggers_spinner(timing):
         Input("timing", "value"),
     ],
 )
-def make_figure(parameters, timing):
+def make_figure(parameter, timing):
     """Doc."""
-    while db_handler.app_timing != timing:
-        time.sleep(0.1)
-    df_selected = filter_dataframe(data_source.df, parameters)
+    df_selected = filter_dataframe(parameter, timing)
     layout_count = copy.deepcopy(layout)
     y_parameter = df_selected.columns[1]
-    df_selected.index = df_selected["timestamp"]
     data = [
-        dict(
-            type="scatter",
-            mode="markers",
-            x=df_selected.index,
-            y=df_selected[y_parameter],
-            name=UNITS.get(y_parameter, ''),
-            opacity=0,
-            hoverinfo="skip",
-        ),
         dict(
             type="scatter",
             mode="lines+markers",
             line=dict(shape="spline", smoothing=2, width=1, color="#33ffe6"),
-            marker=dict(symbol="circle-open"),
-            x=df_selected.index,
+            marker=dict(symbol="circle-closed"),
+            x=df_selected["timestamp"],
             y=df_selected[y_parameter],
-            name=UNITS.get(y_parameter, ''),
-        ),
+            name='Observationer',
+        )
     ]
+    if timing in ('day', 'days3') and parameter in FORECAST_PARAMETERS:
+        df_forecast = filter_forecast(parameter, timing)
+        data.append(
+            dict(
+                type="line",
+                mode="lines",
+                line=dict(shape="spline", smoothing=2, width=1, color="#FFA245"),
+                x=df_forecast["timestamp"],
+                y=df_forecast[y_parameter],
+                name='Prognos',
+                unselected=True,
+            )
+        )
 
     layout_count["title"] = "{} ({})".format(PARAMETERS.get(y_parameter, ''),
                                              UNITS.get(y_parameter, ''))
     layout_count["dragmode"] = "select"
-    layout_count["showlegend"] = False
+    # layout_count["showlegend"] = True
 
     figure = dict(data=data, layout=layout_count)
     return figure
@@ -385,12 +428,12 @@ def make_figure(parameters, timing):
 )
 def make_wind_rose_figure(timing):
     """Doc."""
-    while db_handler.app_timing != timing:
-        time.sleep(0.1)
-    df_selected = filter_wind_rose(data_source.df)
+    df_selected = filter_wind_rose(timing)
 
     figure = px.bar_polar(
-        r=df_selected["frequency"], theta=df_selected["direction"], color=df_selected["strength"],
+        r=df_selected["frequency"],
+        theta=df_selected["direction"],
+        color=df_selected["strength"],
         color_discrete_sequence=px.colors.sequential.Viridis,
     )
     figure.update_polars(
@@ -410,7 +453,9 @@ def make_wind_rose_figure(timing):
     figure.update_layout(
         {
          'margin': {'l': 60, 'r': 30, 'b': 20, 't': 40},
-         'legend': {'font': {'size': 10}, 'orientation': 'h', 'title': 'Vindhastighet (m/s)'},
+         'legend': {'font': {'size': 10},
+                    'orientation': 'h',
+                    'title': 'Vindhastighet (m/s)'},
          'title': 'Vindrosett', 'title_x': .5,
          'paper_bgcolor': '#1b2444',
          'plot_bgcolor': '#1b2444',

@@ -16,6 +16,30 @@ def get_db_conn():
     return sqlite3.connect(os.getenv('TSTWEATHERDB'))
 
 
+def get_start_time(period, time_zone=None):
+    """Doc."""
+    today = pd.Timestamp.today(tz=time_zone or 'Europe/Stockholm')
+    if period == 'day':
+        return (today - pd.Timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')
+    elif period == 'days3':
+        return (today - pd.Timedelta(days=3)).strftime('%Y-%m-%d %H:%M:%S')
+    elif period == 'week':
+        return (today - pd.Timedelta(days=7)).strftime('%Y-%m-%d %H:%M:%S')
+    elif period == 'month':
+        return (today - pd.Timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+    elif period == 'quartile':
+        return (today - pd.Timedelta(days=90)).strftime('%Y-%m-%d %H:%M:%S')
+    elif period == 'halfyear':
+        return (today - pd.Timedelta(days=180)).strftime('%Y-%m-%d %H:%M:%S')
+    elif period == 'fullyear':
+        return (today - pd.Timedelta(days=365)).strftime('%Y-%m-%d %H:%M:%S')
+    elif period == 'thisyear':
+        return pd.Timestamp(f'{today.year}0101').strftime('%Y-%m-%d %H:%M:%S')
+    else:
+        # Return according to "day".
+        return (today - pd.Timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')
+
+
 class DataHandler:
     """Doc."""
 
@@ -62,6 +86,25 @@ class DataBaseHandler:
             conn
         )
 
+    def get_parameter_data_for_time_period(self, *args, time_period='day'):
+        """Return dataframe based on parameter list.
+
+        Args:
+            args (str): iterable of parameters.
+                        Eg. ('timestamp', 'outtemp', 'winsp')
+            time_period (str): period according to TIMING_OPTIONS
+                               (eg. "day", "week" or "month").
+        """
+        para_list = ', '.join(args)
+        start_time = get_start_time(time_period, time_zone=self.time_zone)
+        end_time = pd.Timestamp.today(tz=self.time_zone).strftime('%Y-%m-%d %H:%M:%S')
+        conn = get_db_conn()
+        return pd.read_sql(
+            f"""select {para_list} from weather where timestamp between 
+            '"""+start_time+"""' and '"""+end_time+"""'""",
+            conn
+        )
+
     @staticmethod
     def get():
         """Doc."""
@@ -95,6 +138,17 @@ class DataBaseHandler:
         except IndexError:
             return None
 
+    @staticmethod
+    def get_last_parameter_value(parameter):
+        """Doc."""
+        conn = get_db_conn()
+        try:
+            return pd.read_sql(
+                f'select {parameter} from weather order by rowid desc limit 1', conn
+            )[parameter][0]
+        except IndexError:
+            return None
+
     @property
     def today(self):
         """Return pandas TimeStamp for today."""
@@ -119,6 +173,8 @@ class DataBaseHandler:
     def start_time(self, period):
         if period == 'day':
             self._start_time = (self.today - pd.Timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')
+        elif period == 'days3':
+            self._start_time = (self.today - pd.Timedelta(days=3)).strftime('%Y-%m-%d %H:%M:%S')
         elif period == 'week':
             self._start_time = (self.today - pd.Timedelta(days=7)).strftime('%Y-%m-%d %H:%M:%S')
         elif period == 'month':
@@ -154,9 +210,48 @@ class DataBaseHandler:
         self._app_timing = timing
 
 
-if __name__ == "__main__":
-    db_handler = DataBaseHandler(time_zone='Europe/Stockholm')
-    db_handler.start_time = 'halfyear'
-    db_handler.end_time = 'now'
-    data_source = DataHandler(data=db_handler.get_data_for_time_period())
-    boolean = data_source.df['timestamp'].dt.date == pd.Timestamp('2021-08-10')
+def get_forecast_db_conn():
+    """Doc."""
+    return sqlite3.connect(os.getenv('FORECASTDB'))
+
+
+class ForecastHandler:
+    """Get weather forecast based SMHI model 'PMP3g' (grid size: 2.8 km).
+
+    Data from SMHI:s open API.
+    https://www.smhi.se/data/utforskaren-oppna-data/meteorologisk-prognosmodell-pmp3g-2-8-km-upplosning-api
+    """
+
+    def __init__(self, time_zone=None):
+        self.time_zone = time_zone or 'Europe/Stockholm'
+
+    def get_parameter_data_for_time_period(self, *args, time_period='day'):
+        """Return dataframe based on parameter list.
+
+        Args:
+            args (str): iterable of parameters.
+                        Eg. ('timestamp', 'outtemp', 'winsp')
+            time_period (str): period according to TIMING_OPTIONS
+                               (eg. "day", "days3").
+        """
+        para_list = ', '.join(args)
+        start_time = get_start_time(time_period, time_zone=self.time_zone)
+        end_time = self.get_endtime(time_period)
+        conn = get_forecast_db_conn()
+        return pd.read_sql(
+            f"""select {para_list} from forecast where timestamp between 
+            '"""+start_time+"""' and '"""+end_time+"""'""",
+            conn
+        )
+
+    def get_endtime(self, time_period):
+        """Doc."""
+        if time_period == 'day':
+            return (self.today + pd.Timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')
+        elif time_period == 'days3':
+            return (self.today + pd.Timedelta(days=3)).strftime('%Y-%m-%d %H:%M:%S')
+
+    @property
+    def today(self):
+        """Return pandas TimeStamp for today."""
+        return pd.Timestamp.today(tz=self.time_zone)

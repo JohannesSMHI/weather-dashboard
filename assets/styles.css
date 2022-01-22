@@ -199,3 +199,14 @@ input[type="radio" i] {
   display: flex;
   flex-direction: column;
 }
+
+.div-logo{
+  display: inline-block;
+  float: left;
+}
+
+.logo{
+  height: 100px;
+  padding: 6px;
+  margin-top: 3px;
+}
