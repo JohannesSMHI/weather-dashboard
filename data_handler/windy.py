@@ -12,7 +12,9 @@ wind_directions = (
     'N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
     'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'
 )
-windir_mapper = tuple((d, (i * 22.5) + 11.25) for i, d in enumerate(wind_directions))
+windir_mapper = tuple(
+    (d, (i * 22.5) + 11.25) for i, d in enumerate(wind_directions)
+)
 
 
 def get_direction(x):

@@ -5,7 +5,6 @@ Created on 2021-12-23 13:27
 @author: johannes
 """
 import os
-import time
 from dotenv import load_dotenv
 from pathlib import Path
 import copy
@@ -19,15 +18,17 @@ from dash import html
 import dash_leaflet as leaflet
 import plotly.express as px
 
-import windy
 from controls import (
     PARAMETERS,
     FORECAST_PARAMETERS,
     TIMING_OPTIONS,
     UNITS,
     TILE_URL,
+    FIGURE_KWARGS,
 )
 from data_handler.handler import DataBaseHandler, ForecastHandler
+from data_handler import windy, rainy
+
 load_dotenv(dotenv_path=Path(__file__).parent.joinpath('.env'))
 
 
@@ -88,7 +89,8 @@ layout = dict(
     autosize=True,
     automargin=True,
     margin=dict(l=60, r=30, b=20, t=40),
-    hovermode="closest",
+    hovermode="x unified",
+    dragmode="select",
     legend=dict(
         font=dict(size=12),
         orientation="h",
@@ -179,7 +181,7 @@ def serve_layout():
                             dcc.Dropdown(
                                 id="parameters",
                                 options=parameter_options,
-                                value=list(PARAMETERS)[1],
+                                value=list(PARAMETERS)[0],
                                 className="dcc_control",
                                 style={
                                     'color': '#768DB7',
@@ -318,21 +320,30 @@ def filter_dataframe(parameter, timing):
         para = parameter
     else:
         para = 'presabs'
+
     df = db_handler.get_parameter_data_for_time_period(
         'timestamp', para, time_period=timing
     )
+    df['timestamp'] = df['timestamp'].apply(pd.Timestamp)
+
     if parameter == 'presrel':
         # Dummy fix. 56 m above sea level = + 7 hpa for the relative pressure.
         df[para] += 7
         df.rename(columns={para: parameter}, inplace=True)
-    df['timestamp'] = df['timestamp'].apply(pd.Timestamp)
+    elif parameter.startswith('rain'):
+        df = rainy.get_rainframe(df, parameter)
+
     return df
 
 
 def filter_forecast(parameter, timing):
     """Doc."""
+    params = ['timestamp', parameter]
+    if parameter == 'rainh':
+        params += ['rainhmin', 'rainhmax']
+
     df = fc_handler.get_parameter_data_for_time_period(
-        'timestamp', parameter, time_period=timing
+        *params, time_period=timing
     )
     df['timestamp'] = df['timestamp'].apply(pd.Timestamp)
     return df
@@ -388,10 +399,7 @@ def make_figure(parameter, timing):
     y_parameter = df_selected.columns[1]
     data = [
         dict(
-            type="scatter",
-            mode="lines+markers",
-            line=dict(shape="spline", smoothing=2, width=1, color="#33ffe6"),
-            marker=dict(symbol="circle-closed"),
+            **FIGURE_KWARGS.get(parameter, {}),
             x=df_selected["timestamp"],
             y=df_selected[y_parameter],
             name='Observationer',
@@ -401,20 +409,33 @@ def make_figure(parameter, timing):
         df_forecast = filter_forecast(parameter, timing)
         data.append(
             dict(
-                type="line",
-                mode="lines",
-                line=dict(shape="spline", smoothing=2, width=1, color="#FFA245"),
+                **FIGURE_KWARGS.get('rainh_fc'),
                 x=df_forecast["timestamp"],
                 y=df_forecast[y_parameter],
                 name='Prognos',
-                unselected=True,
             )
         )
+        if parameter == 'rainh':
+            data += [
+                dict(
+                    **FIGURE_KWARGS.get('rainhmax_fc'),
+                    x=df_forecast["timestamp"],
+                    y=df_forecast['rainhmin'],
+                    name='Prognos - Min',
+                ),
+                dict(
+                    **FIGURE_KWARGS.get('rainhmax_fc'),
+                    x=df_forecast["timestamp"],
+                    y=df_forecast['rainhmax'],
+                    name='Prognos - Max',
+                ),
+            ]
 
     layout_count["title"] = "{} ({})".format(PARAMETERS.get(y_parameter, ''),
                                              UNITS.get(y_parameter, ''))
-    layout_count["dragmode"] = "select"
-    # layout_count["showlegend"] = True
+    layout_count['yaxis']["title"] = UNITS.get(y_parameter, '')
+    if timing == 'day':
+        layout_count['xaxis']['tickformat'] = "%b-%d %H:%M"
 
     figure = dict(data=data, layout=layout_count)
     return figure

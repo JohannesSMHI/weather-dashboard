@@ -11,6 +11,17 @@ import sqlite3
 import pandas as pd
 
 
+DAYS_MAPPER = {
+    'day':  1,
+    'days3': 3,
+    'week': 7,
+    'month': 30,
+    'quartile': 90,
+    'halfyear': 180,
+    'fullyear': 365,
+}
+
+
 def get_db_conn():
     """Doc."""
     return sqlite3.connect(os.getenv('TSTWEATHERDB'))
@@ -19,40 +30,14 @@ def get_db_conn():
 def get_start_time(period, time_zone=None):
     """Doc."""
     today = pd.Timestamp.today(tz=time_zone or 'Europe/Stockholm')
-    if period == 'day':
-        return (today - pd.Timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')
-    elif period == 'days3':
-        return (today - pd.Timedelta(days=3)).strftime('%Y-%m-%d %H:%M:%S')
-    elif period == 'week':
-        return (today - pd.Timedelta(days=7)).strftime('%Y-%m-%d %H:%M:%S')
-    elif period == 'month':
-        return (today - pd.Timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
-    elif period == 'quartile':
-        return (today - pd.Timedelta(days=90)).strftime('%Y-%m-%d %H:%M:%S')
-    elif period == 'halfyear':
-        return (today - pd.Timedelta(days=180)).strftime('%Y-%m-%d %H:%M:%S')
-    elif period == 'fullyear':
-        return (today - pd.Timedelta(days=365)).strftime('%Y-%m-%d %H:%M:%S')
-    elif period == 'thisyear':
+    if period == 'thisyear':
         return pd.Timestamp(f'{today.year}0101').strftime('%Y-%m-%d %H:%M:%S')
+    elif period in DAYS_MAPPER:
+        return (today - pd.Timedelta(days=DAYS_MAPPER.get(period))
+                ).strftime('%Y-%m-%d %H:%M:%S')
     else:
         # Return according to "day".
         return (today - pd.Timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')
-
-
-class DataHandler:
-    """Doc."""
-
-    def __init__(self, *args, **kwargs):
-        self.df = None
-        if 'data' in kwargs:
-            self.update_data(**kwargs)
-
-    def update_data(self, *args, data=pd.DataFrame(), **kwargs):
-        """Update dataframe."""
-        if not data.empty:
-            data['timestamp'] = data['timestamp'].apply(pd.Timestamp)
-            self.df = data
 
 
 class DataBaseHandler:
