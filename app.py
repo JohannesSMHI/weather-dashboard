@@ -4,36 +4,45 @@ Created on 2021-12-23 13:27
 
 @author: johannes
 """
-import os
-from dotenv import load_dotenv
-from pathlib import Path
 import copy
 import json
+import os
+from pathlib import Path
+
 import dash
+import dash_leaflet as leaflet
+import numpy as np
 import pandas as pd
-from flask import request, jsonify
-from dash.dependencies import Input, Output, ClientsideFunction
+import plotly.express as px
 from dash import dcc
 from dash import html
-import dash_leaflet as leaflet
-import plotly.express as px
+from dash.dependencies import Input, Output, ClientsideFunction
+from dotenv import load_dotenv
+from flask import request, jsonify
 
 from controls import (
     PARAMETERS,
+    RAIN_PARA_CONTROL,
     FORECAST_PARAMETERS,
     TIMING_OPTIONS,
     UNITS,
     TILE_URL,
     FIGURE_KWARGS,
 )
-from data_handler.handler import DataBaseHandler, ForecastHandler
 from data_handler import windy, rainy
+from data_handler.handler import (
+    DataBaseHandler,
+    ForecastHandler,
+    ZucchiniForcast
+)
 
 load_dotenv(dotenv_path=Path(__file__).parent.joinpath('.env'))
 
 
 fc_handler = ForecastHandler(time_zone='Europe/Stockholm')
 db_handler = DataBaseHandler(time_zone='Europe/Stockholm')
+zu_handler = ZucchiniForcast()
+
 start_timing = 'day'
 db_handler.start_time = start_timing
 db_handler.end_time = 'now'
@@ -102,13 +111,13 @@ layout = dict(
     plot_bgcolor='#1b2444',
     font=dict(
         family="verdana",
-        color="#768DB7"
+        color="#9CB2D9"
     ),
     xaxis=dict(
-        gridcolor="#768DB7",
+        gridcolor="#9CB2D9",
     ),
     yaxis=dict(
-        gridcolor="#768DB7",
+        gridcolor="#9CB2D9",
     )
 )
 
@@ -131,9 +140,25 @@ def get_last_parameter_value(parameter):
         if pd.isnull(db_handler.get_last_parameter_value(parameter)):
             return '-'
         else:
-            return f'{db_handler.get_last_parameter_value(parameter)} {UNITS.get(parameter)}'
+            return f'{db_handler.get_last_parameter_value(parameter)} ' \
+                   f'{UNITS.get(parameter)}'
     except TypeError:
         return '-'
+
+
+def get_forecast_harvest_weight():
+    """Doc."""
+    try:
+        mean_value = fc_handler.get_mean_value('outtemp')
+        harvest_weight = zu_handler.calculate(mean_value)
+        return harvest_weight
+    except TypeError:
+        return '-'
+
+
+def get_forecast_harvest_text():
+    weight = get_forecast_harvest_weight()
+    return f'Aktuell skördningsvikt (zucchini): {weight}'
 
 
 def serve_layout():
@@ -153,15 +178,31 @@ def serve_layout():
                                         children=html.Img(
                                             className="logo",
                                             src=app.get_asset_url(
-                                                "utm_weather_icon5.png")
+                                                # "utm_weather_icon5.png")
+                                                "utm_weather_icon_new.png")
                                         ),
                                     ),
+                                    # html.Div(
+                                    #     className="div-logo-github",
+                                    #     children=html.Img(
+                                    #         className="logo-github",
+                                    #         title="View on Github",
+                                    #         src=app.get_asset_url(
+                                    #             # "utm_weather_icon5.png")
+                                    #             "GitHub-Mark-32px.png")
+                                    #     ),
+                                    # ),
                                     html.H1(
                                         "Utmadernas väderstation",
                                         style={"marginBottom": "0px",
-                                               'textAlign': 'center'},
+                                               'textAlign': 'center',
+                                               'color': '#1b2444'},
                                     ),
-                                    html.H6(get_last_timestamp_text()),
+                                    html.H6(get_last_timestamp_text(),
+                                            style={'color': '#1b2444'}),
+                                    html.H6(get_forecast_harvest_text(),
+                                            style={'color': '#1b2444'}),
+
                                 ]
                             )
                         ],
@@ -184,10 +225,10 @@ def serve_layout():
                                 value=list(PARAMETERS)[0],
                                 className="dcc_control",
                                 style={
-                                    'color': '#768DB7',
+                                    'color': '#9CB2D9',
                                     'background-color': '#1b2444',
-                                    'font-color': '#768DB7',
-                                    'border-color': '#768DB7',
+                                    'font-color': '#9CB2D9',
+                                    'border-color': '#9CB2D9',
                                 }
                             ),
                             html.P("Välj tidsperiod:", className="control_label"),
@@ -197,10 +238,10 @@ def serve_layout():
                                 value=start_timing,
                                 className="dcc_control",
                                 style={
-                                    'color': '#768DB7',
+                                    'color': '#9CB2D9',
                                     'background-color': '#1b2444',
-                                    'font-color': '#768DB7',
-                                    'border-color': '#768DB7',
+                                    'font-color': '#9CB2D9',
+                                    'border-color': '#9CB2D9',
                                 }
                             ),
                             html.P(" ", className="control_label"),
@@ -209,16 +250,6 @@ def serve_layout():
                                 type="default",
                                 children=html.Div(id="loading-output")
                             ),
-                            # html.P("Dynamisk tidsfiltrering:", className="control_label"),
-                            # dcc.DatePickerRange(
-                            #     id='my-date-picker-range',
-                            #     min_date_allowed=ts_range_tst[0],
-                            #     max_date_allowed=ts_range_tst[-1],
-                            #     initial_visible_month=ts_range_tst[0],
-                            #     end_date=ts_range_tst[-1],
-                            #     display_format='YYYY-MM-DD',
-                            #     className="dcc_control",
-                            # )
                         ],
                         className="pretty_container four columns",
                         id="cross-filter-options",
@@ -249,7 +280,7 @@ def serve_layout():
                                         [
                                             html.H6(get_last_parameter_value('raind'),
                                                     id="text_raind"),
-                                            html.P("Regn - 24h")
+                                            html.P("Regn - idag")
                                         ],
                                         id="id_raind",
                                         className="mini_container",
@@ -283,26 +314,25 @@ def serve_layout():
                 [
                     html.Div(
                         [
-                            leaflet.Map(children=[
-                                leaflet.TileLayer(url=TILE_URL),  # maxZoom=11,
-                                leaflet.CircleMarker(center=[57.386052, 12.295565],
-                                                     color='#33ffe6',
-                                                     children=[leaflet.Tooltip("Utmaderna")])
-                            ], center=[57.354, 12.209], zoom=8,
-                                style={
-                                    'width': '100%', 'height': '50vh', 'margin': "auto",
-                                    "display": "flex", "position": "relative",
-                                    "flexDirection": "column"
-                                }
-                            ),
+                            html.Div(
+                                [dcc.Graph(id="wind_rose_graph")],
+                                id="WindRoseGraphContainer",
+                                className="pretty_container four columns",
+                            )
                         ],
                         className="pretty_container four columns",
-                        id="station-map",
+                        id="roses",
                     ),
                     html.Div(
-                        [dcc.Graph(id="wind_rose_graph")],
-                        id="WindRoseGraphContainer",
-                        className="pretty_container eight columns",
+                        [
+                            html.Div(
+                                [dcc.Graph(id="zucchini_graph")],
+                                id="zucchiniGraphContainer",
+                                className="pretty_container",
+                            ),
+                        ],
+                        id="zucchini-right-column",
+                        className="eight columns",
                     ),
                 ],
                 className="row flex-display",
@@ -315,11 +345,13 @@ def serve_layout():
 
 def filter_dataframe(parameter, timing):
     """Doc."""
-    if parameter != 'presrel':
+    if parameter == 'presrel':
         # Dummy fix.
-        para = parameter
-    else:
         para = 'presabs'
+    elif parameter.startswith('rain'):
+        para = RAIN_PARA_CONTROL.get(timing)
+    else:
+        para = parameter
 
     df = db_handler.get_parameter_data_for_time_period(
         'timestamp', para, time_period=timing
@@ -330,9 +362,24 @@ def filter_dataframe(parameter, timing):
         # Dummy fix. 56 m above sea level = + 7 hpa for the relative pressure.
         df[para] += 7
         df.rename(columns={para: parameter}, inplace=True)
-    elif parameter.startswith('rain'):
-        df = rainy.get_rainframe(df, parameter)
+    elif para.startswith('rain'):
+        df = rainy.get_rainframe(df, para)
 
+    return df
+
+
+def filter_harvest_temperature(timing):
+    """Doc."""
+    params = ['timestamp', 'outtemp']
+    df = fc_handler.get_rolling_forecast_data(
+        *params, time_period=timing
+    )
+    df['timestamp'] = df['timestamp'].apply(pd.Timestamp)
+    df['meantemp'] = np.nan
+    delta = pd.Timedelta(days=1)
+    for row in df.itertuples():
+        boolean = row.timestamp <= df['timestamp'] <= (row.timestamp + delta)
+        df['meantemp'].iloc[row.Index] = np.nanmean(df.loc[boolean, 'outtemp'])
     return df
 
 
@@ -361,6 +408,22 @@ def filter_wind_rose(timing):
     return windy.get_windframe(df_wind)
 
 
+RAIN_TITLE = {
+    'rainh': 'Regn - Timma',
+    'raind': 'Regn - Dag',
+    'rainw': 'Regn - Vecka',
+    'rainm': 'Regn - Månad',
+}
+
+
+def get_fig_title(para):
+    """Doc."""
+    if para.startswith('rain'):
+        return "{} ({})".format(RAIN_TITLE.get(para, ''), UNITS.get(para, ''))
+    else:
+        return "{} ({})".format(PARAMETERS.get(para, ''), UNITS.get(para, ''))
+
+
 app.layout = serve_layout
 
 # Create callbacks
@@ -369,7 +432,8 @@ app.clientside_callback(
     Output("output-clientside", "children"),
     [
         Input("weather_graph", "figure"),
-        Input("wind_rose_graph", "figure")
+        Input("wind_rose_graph", "figure"),
+        Input("zucchini_graph", "figure"),
     ],
 )
 
@@ -405,11 +469,11 @@ def make_figure(parameter, timing):
             name='Observationer',
         )
     ]
-    if timing in ('day', 'days3') and parameter in FORECAST_PARAMETERS:
+    if timing in ('day', 'days3', 'week') and parameter in FORECAST_PARAMETERS:
         df_forecast = filter_forecast(parameter, timing)
         data.append(
             dict(
-                **FIGURE_KWARGS.get('rainh_fc'),
+                **FIGURE_KWARGS.get('fc'),
                 x=df_forecast["timestamp"],
                 y=df_forecast[y_parameter],
                 name='Prognos',
@@ -418,22 +482,56 @@ def make_figure(parameter, timing):
         if parameter == 'rainh':
             data += [
                 dict(
-                    **FIGURE_KWARGS.get('rainhmax_fc'),
+                    **FIGURE_KWARGS.get('rainherrory_fc'),
                     x=df_forecast["timestamp"],
-                    y=df_forecast['rainhmin'],
-                    name='Prognos - Min',
-                ),
-                dict(
-                    **FIGURE_KWARGS.get('rainhmax_fc'),
-                    x=df_forecast["timestamp"],
-                    y=df_forecast['rainhmax'],
-                    name='Prognos - Max',
+                    y=df_forecast[y_parameter],
+                    name='Felmarginal',
+                    error_y=dict(
+                        type='data',
+                        thickness=.8,
+                        symmetric=False,
+                        array=df_forecast['rainhmax']-df_forecast[y_parameter],
+                        arrayminus=df_forecast[y_parameter]-df_forecast['rainhmin']
+                    )
                 ),
             ]
 
-    layout_count["title"] = "{} ({})".format(PARAMETERS.get(y_parameter, ''),
-                                             UNITS.get(y_parameter, ''))
+    layout_count["title"] = get_fig_title(y_parameter)
     layout_count['yaxis']["title"] = UNITS.get(y_parameter, '')
+    if timing == 'day':
+        layout_count['xaxis']['tickformat'] = "%b-%d %H:%M"
+
+    figure = dict(data=data, layout=layout_count)
+    return figure
+
+
+@app.callback(
+    Output("zucchini_graph", "figure"),
+    [
+        Input("timing", "value"),
+    ],
+)
+def make_zucchini_figure(timing):
+    """Doc."""
+    if timing not in ('day', 'days3', 'week'):
+        timing = 'week'
+
+    layout_count = copy.deepcopy(layout)
+    y_parameter = 'zucchini_fc'
+    df_selected = filter_harvest_temperature(timing)
+    df_selected[y_parameter] = zu_handler.calculate_array(
+        df_selected['meantemp'])
+    data = [
+        dict(
+            **FIGURE_KWARGS.get('zucchini_fc', {}),
+            x=df_selected["timestamp"],
+            y=df_selected[y_parameter],
+            name='Skördeprognos',
+        )
+    ]
+
+    layout_count["title"] = 'Prognos för skördningsvikter (zucchini)'
+    layout_count['yaxis']["title"] = 'gram'
     if timing == 'day':
         layout_count['xaxis']['tickformat'] = "%b-%d %H:%M"
 
@@ -461,14 +559,14 @@ def make_wind_rose_figure(timing):
         bgcolor='#1b2444',
         angularaxis=dict(
             showline=True,
-            linecolor='#768DB7',
-            gridcolor="#768DB7"
+            linecolor='#9CB2D9',
+            gridcolor="#9CB2D9"
         ),
         radialaxis=dict(
             side="counterclockwise",
             showline=True,
-            linecolor='#768DB7',
-            gridcolor="#768DB7",
+            linecolor='#9CB2D9',
+            gridcolor="#9CB2D9",
         )
     )
     figure.update_layout(
@@ -480,7 +578,7 @@ def make_wind_rose_figure(timing):
          'title': 'Vindrosett', 'title_x': .5,
          'paper_bgcolor': '#1b2444',
          'plot_bgcolor': '#1b2444',
-         'font': {'family': 'verdana', 'color': '#768DB7'}}
+         'font': {'family': 'verdana', 'color': '#9CB2D9'}}
     )
 
     return figure

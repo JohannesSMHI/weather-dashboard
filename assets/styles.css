@@ -4,14 +4,14 @@
 }
 
 body {
-  background-color: #161d33;
+  background-color: #D9E6FF;
   margin: 5%;
   font-family: verdana;
-  color: #768DB7;
+  color: #9CB2D9;
 }
 
 div {
-  color: #768DB7;
+  color: #9CB2D9;
   font-family: verdana;
 }
 
@@ -28,35 +28,35 @@ input[type="radio" i] {
 }
 
 .has-value.Select--single>.Select-control .Select-value .Select-value-label {
-  color: #768DB7;
-  font-color: #768DB7;
+  color: #9CB2D9;
+  font-color: #9CB2D9;
 }
 
 .Select--single > .Select-control .Select-value .Select-input .Select-placeholder {
-  color: #768DB7;
-  font-color: #768DB7;
+  color: #9CB2D9;
+  font-color: #9CB2D9;
 }
 
 .has-value.is-pseudo-focused.Select--single>.Select-control .Select-value .Select-value-label {
-  color: #768DB7;
-  font-color: #768DB7;
+  color: #9CB2D9;
+  font-color: #9CB2D9;
 }
 
 .Select-control {
-  background-color: #161d33;
-  color: #768DB7;
+  background-color: #D4DBE8;
+  color: #9CB2D9;
   box-color: #1b2444;
 }
 
 .control--item {
   background-color: transparent;
   border-color: #525F89;
-  color: #768DB7;
+  color: #9CB2D9;
 }
 
 .Select-menu-outer {
-  background-color: #161d33;
-  color: #768DB7;
+  background-color: #D4DBE8;
+  color: #9CB2D9;
   box-color: #1b2444;
 }
 
@@ -97,7 +97,7 @@ input[type="radio" i] {
 .dcc_control {
   margin: 0;
   background-color: #1b2444;
-  font-color: #768DB7;
+  font-color: #9CB2D9;
   font-family: verdana;
   padding: 5px;
   width: calc(100%-40px);
@@ -135,7 +135,18 @@ input[type="radio" i] {
   background-color: #1b2444;
 }
 
+#zucchini_graph {
+  position: relative;
+  background-color: #1b2444;
+}
+
 #weatherGraphContainer {
+  background-color: #1b2444;
+  flex: 5;
+  position: relative;
+}
+
+#zucchiniGraphContainer {
   background-color: #1b2444;
   flex: 5;
   position: relative;
@@ -143,12 +154,13 @@ input[type="radio" i] {
 
 #wind_rose_graph {
   position: relative;
+  display: flex;
   background-color: #1b2444;
 }
 
 #WindRoseGraphContainer {
   background-color: #1b2444;
-  flex: 5;
+  width: 95%;
   position: relative;
 }
 
@@ -209,4 +221,15 @@ input[type="radio" i] {
   height: 100px;
   padding: 6px;
   margin-top: 3px;
+}
+
+.div-logo-github{
+  display: inline-block;
+  float: right;
+}
+
+.logo-github{
+  height: 32px;
+  padding: 6px;
+  margin-top: -30px;
 }

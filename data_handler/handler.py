@@ -9,7 +9,10 @@ from pathlib import Path
 import yaml
 import sqlite3
 import pandas as pd
+import numpy as np
 
+
+TIME_FMT = '%Y-%m-%d %H:%M:%S'
 
 DAYS_MAPPER = {
     'day':  1,
@@ -23,7 +26,9 @@ DAYS_MAPPER = {
 
 
 def get_db_conn():
-    """Doc."""
+    """
+    https://docs.python.org/3/library/sqlite3.html#sqlite3-placeholders:~:text=import%20sqlite3%0A%0Acon%20%3D%20sqlite3.connect(%22%3Amemory%3A%22),%7D)%0Aprint(cur.fetchall())%0A%0Acon.close()
+    """
     return sqlite3.connect(os.getenv('TSTWEATHERDB'))
 
 
@@ -31,13 +36,13 @@ def get_start_time(period, time_zone=None):
     """Doc."""
     today = pd.Timestamp.today(tz=time_zone or 'Europe/Stockholm')
     if period == 'thisyear':
-        return pd.Timestamp(f'{today.year}0101').strftime('%Y-%m-%d %H:%M:%S')
+        return pd.Timestamp(f'{today.year}0101').strftime(TIME_FMT)
     elif period in DAYS_MAPPER:
         return (today - pd.Timedelta(days=DAYS_MAPPER.get(period))
-                ).strftime('%Y-%m-%d %H:%M:%S')
+                ).strftime(TIME_FMT)
     else:
         # Return according to "day".
-        return (today - pd.Timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')
+        return (today - pd.Timedelta(days=1)).strftime(TIME_FMT)
 
 
 class DataBaseHandler:
@@ -82,7 +87,7 @@ class DataBaseHandler:
         """
         para_list = ', '.join(args)
         start_time = get_start_time(time_period, time_zone=self.time_zone)
-        end_time = pd.Timestamp.today(tz=self.time_zone).strftime('%Y-%m-%d %H:%M:%S')
+        end_time = pd.Timestamp.today(tz=self.time_zone).strftime(TIME_FMT)
         conn = get_db_conn()
         return pd.read_sql(
             f"""select {para_list} from weather where timestamp between 
@@ -157,21 +162,21 @@ class DataBaseHandler:
     @start_time.setter
     def start_time(self, period):
         if period == 'day':
-            self._start_time = (self.today - pd.Timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')
+            self._start_time = (self.today - pd.Timedelta(days=1)).strftime(TIME_FMT)
         elif period == 'days3':
-            self._start_time = (self.today - pd.Timedelta(days=3)).strftime('%Y-%m-%d %H:%M:%S')
+            self._start_time = (self.today - pd.Timedelta(days=3)).strftime(TIME_FMT)
         elif period == 'week':
-            self._start_time = (self.today - pd.Timedelta(days=7)).strftime('%Y-%m-%d %H:%M:%S')
+            self._start_time = (self.today - pd.Timedelta(days=7)).strftime(TIME_FMT)
         elif period == 'month':
-            self._start_time = (self.today - pd.Timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+            self._start_time = (self.today - pd.Timedelta(days=30)).strftime(TIME_FMT)
         elif period == 'quartile':
-            self._start_time = (self.today - pd.Timedelta(days=90)).strftime('%Y-%m-%d %H:%M:%S')
+            self._start_time = (self.today - pd.Timedelta(days=90)).strftime(TIME_FMT)
         elif period == 'halfyear':
-            self._start_time = (self.today - pd.Timedelta(days=180)).strftime('%Y-%m-%d %H:%M:%S')
+            self._start_time = (self.today - pd.Timedelta(days=180)).strftime(TIME_FMT)
         elif period == 'fullyear':
-            self._start_time = (self.today - pd.Timedelta(days=365)).strftime('%Y-%m-%d %H:%M:%S')
+            self._start_time = (self.today - pd.Timedelta(days=365)).strftime(TIME_FMT)
         elif period == 'thisyear':
-            self._start_time = pd.Timestamp(f'{self.today.year}0101').strftime('%Y-%m-%d %H:%M:%S')
+            self._start_time = pd.Timestamp(f'{self.today.year}0101').strftime(TIME_FMT)
 
     @property
     def end_time(self):
@@ -181,9 +186,9 @@ class DataBaseHandler:
     @end_time.setter
     def end_time(self, period):
         if period == 'now':
-            self._end_time = pd.Timestamp.today(tz=self.time_zone).strftime('%Y-%m-%d %H:%M:%S')
+            self._end_time = pd.Timestamp.today(tz=self.time_zone).strftime(TIME_FMT)
         else:
-            self._end_time = pd.Timestamp(period).strftime('%Y-%m-%d %H:%M:%S')
+            self._end_time = pd.Timestamp(period).strftime(TIME_FMT)
 
     @property
     def app_timing(self):
@@ -210,6 +215,18 @@ class ForecastHandler:
     def __init__(self, time_zone=None):
         self.time_zone = time_zone or 'Europe/Stockholm'
 
+    def get_mean_value(self, parameter, time_period='day'):
+        """Return mean value based on the given time period.
+
+        Args:
+            parameter (str): Parameter name. Eg. 'outtemp'
+            time_period (str): period according to TIMING_OPTIONS
+                               (eg. "day", "days3").
+        """
+        values = self.get_parameter_data_for_time_period(
+            parameter, time_period=time_period)
+        return np.nanmean(values[parameter])
+
     def get_parameter_data_for_time_period(self, *args, time_period='day'):
         """Return dataframe based on parameter list.
 
@@ -229,14 +246,77 @@ class ForecastHandler:
             conn
         )
 
-    def get_endtime(self, time_period):
+    def get_rolling_forecast_data(self, *args, time_period='day'):
+        """Doc."""
+        para_list = ', '.join(args)
+        end_time = self.get_endtime(time_period, extra=1)
+        start_time = self.today.strftime(TIME_FMT)
+        conn = get_forecast_db_conn()
+        return pd.read_sql(
+            f"""select {para_list} from forecast where timestamp between 
+                    '"""+start_time+"""' and '"""+end_time+ """'""",
+            conn
+        )
+
+    def get_endtime(self, time_period, extra=0):
         """Doc."""
         if time_period == 'day':
-            return (self.today + pd.Timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')
+            return (self.today + pd.Timedelta(days=1 + extra)).strftime(TIME_FMT)
         elif time_period == 'days3':
-            return (self.today + pd.Timedelta(days=3)).strftime('%Y-%m-%d %H:%M:%S')
+            return (self.today + pd.Timedelta(days=3 + extra)).strftime(TIME_FMT)
+        elif time_period == 'week':
+            return (self.today + pd.Timedelta(days=7 + extra)).strftime(TIME_FMT)
 
     @property
     def today(self):
         """Return pandas TimeStamp for today."""
         return pd.Timestamp.today(tz=self.time_zone)
+
+
+class ZucchiniForcast:
+    """Calculate the appropriate target weight for zucchini harvest."""
+
+    def __init__(self):
+        base = Path(__file__).parent
+        self.zz = np.load(
+            str(base.joinpath('resources/temp_array.npy').resolve()))
+        self.xx, self.yy = np.meshgrid(np.arange(200, 501, 1),
+                                       np.arange(200, 601, 1))
+        self.min_temp = 12.6
+        self.max_temp = 20.6
+
+    def calculate(self, forcast_temp, target_weight=500):
+        """Return harvest weight."""
+        if forcast_temp < self.min_temp:
+            forcast_temp = self.min_temp
+            weight_sign = '>'
+        elif forcast_temp > self.max_temp:
+            forcast_temp = self.max_temp
+            weight_sign = '<'
+        else:
+            weight_sign = ''
+        temps_idx = np.logical_and(
+            self.yy == int(target_weight), ~np.isnan(self.zz)
+        )
+        temps = self.zz[temps_idx]
+        temp_value = temps[(np.abs(temps - forcast_temp)).argmin()]
+        value = self.xx[np.logical_and(temps_idx, self.zz == temp_value)][0]
+        return f'{weight_sign}{value} g'
+
+    def calculate_array(self, forcast_temp, target_weight=500):
+        """Return harvest weight."""
+        forcast_temp = np.array(forcast_temp)
+        forcast_temp = np.where(forcast_temp < self.min_temp,
+                                self.min_temp, forcast_temp)
+        forcast_temp = np.where(forcast_temp > self.max_temp,
+                                self.max_temp, forcast_temp)
+        temps_idx = np.logical_and(
+            self.yy == int(target_weight), ~np.isnan(self.zz)
+        )
+        temps = self.zz[temps_idx]
+        values = []
+        for temp in forcast_temp:
+            temp_value = temps[(np.abs(temps - temp)).argmin()]
+            value = self.xx[np.logical_and(temps_idx, self.zz == temp_value)][0]
+            values.append(value)
+        return values

@@ -6,7 +6,6 @@ Created on 2021-12-23 13:27
 """
 
 TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'
-# TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_nolabels/{z}/{x}/{y}.png'
 
 TIME_FIELDS = dict(
     timestamp='Tidsstämpel',
@@ -20,7 +19,7 @@ TIME_FIELDS = dict(
 TIMING_OPTIONS = dict(
     day='24h (+ prognos)',
     days3='3 dagar (+ prognos)',
-    week='Vecka',
+    week='Vecka (+ prognos)',
     month='Månad',
     quartile='Kvartal',
     halfyear='Halvår',
@@ -32,19 +31,30 @@ TIMING_OPTIONS = dict(
 PARAMETERS = dict(
     outtemp='Temperatur - Ute',
     intemp='Temperatur - Inne',
+    rainh='Regn',
+    # raind='Regn - Dag',
+    # rainw='Regn - Vecka',
+    # rainm='Regn - Månad',
+    # raint='Regn - Totalt',
     # outdew='Daggpunkt',
     # outfeel='Temperatur - Känns som',
     winsp='Vindhastighet',
     gust='Byvind',
-    outhumi='Luftfuktighet',
     windir='Vindriktning',
+    outhumi='Luftfuktighet',
     presabs='Lufttryck - Absolut',
     presrel='Lufttryck - Relativt',
-    rainh='Regn - Timma',
-    raind='Regn - Dag',
-    rainw='Regn - Vecka',
-    rainm='Regn - Månad',
-    # raint='Regn - Totalt',
+)
+
+RAIN_PARA_CONTROL = dict(
+    day='rainh',
+    days3='rainh',
+    week='rainh',
+    month='raind',
+    quartile='rainw',
+    halfyear='rainw',
+    thisyear='rainw',
+    fullyear='rainm',
 )
 
 
@@ -111,7 +121,7 @@ def get_bar_kwargs():
     }
 
 
-def get_rain_forecast_kwargs():
+def get_forecast_kwargs():
     """Doc."""
     return {
         'type': "line",
@@ -124,7 +134,7 @@ def get_rain_forecast_kwargs():
 def get_rain_mima_forecast_kwargs():
     """Doc."""
     return {
-        'stackgroup': 'rainy',
+        # 'stackgroup': 'rainy',
         'showlegend': False,
         'line': {'shape': "spline", 'smoothing': 2,
                  'width': 0, 'color': "#FFA245"},
@@ -147,7 +157,9 @@ FIGURE_KWARGS = dict(
     rainw=get_bar_kwargs(),
     rainm=get_bar_kwargs(),
     raint=get_bar_kwargs(),
-    rainh_fc=get_rain_forecast_kwargs(),
+    fc=get_forecast_kwargs(),
+    rainherrory_fc=get_rain_mima_forecast_kwargs(),
     rainhmin_fc=get_rain_mima_forecast_kwargs(),
     rainhmax_fc=get_rain_mima_forecast_kwargs(),
+    zucchini_fc=get_line_kwargs(),
 )
