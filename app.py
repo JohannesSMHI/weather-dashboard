@@ -10,7 +10,6 @@ import os
 from pathlib import Path
 
 import dash
-import dash_leaflet as leaflet
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -26,7 +25,6 @@ from controls import (
     FORECAST_PARAMETERS,
     TIMING_OPTIONS,
     UNITS,
-    TILE_URL,
     FIGURE_KWARGS,
 )
 from data_handler import windy, rainy
@@ -146,19 +144,30 @@ def get_last_parameter_value(parameter):
         return '-'
 
 
-def get_forecast_harvest_weight():
+def get_forecast_harvest_weight(target_weight=500):
     """Doc."""
     try:
         mean_value = fc_handler.get_mean_value('outtemp')
-        harvest_weight = zu_handler.calculate(mean_value)
+        harvest_weight = zu_handler.calculate(mean_value,
+                                              target_weight=target_weight)
         return harvest_weight
     except TypeError:
         return '-'
 
 
 def get_forecast_harvest_text():
-    weight = get_forecast_harvest_weight()
-    return f'Aktuell skördningsvikt (zucchini): {weight}'
+    weight = get_forecast_harvest_weight(target_weight=350)
+    return f'Aktuell skördvikt (EKO-zucchini): {weight} - 350 g'
+
+
+def get_forecast_harvest_info_box(target_weight=500):
+    weight = get_forecast_harvest_weight(target_weight=target_weight)
+    return f'{weight} - {target_weight} g'
+
+
+def get_temp_forecast_text():
+    mean_temp = fc_handler.get_mean_value('outtemp')
+    return f'Kommande dygnsmedeltemperatur {round(mean_temp, 1)}'
 
 
 def serve_layout():
@@ -182,16 +191,6 @@ def serve_layout():
                                                 "utm_weather_icon_new.png")
                                         ),
                                     ),
-                                    # html.Div(
-                                    #     className="div-logo-github",
-                                    #     children=html.Img(
-                                    #         className="logo-github",
-                                    #         title="View on Github",
-                                    #         src=app.get_asset_url(
-                                    #             # "utm_weather_icon5.png")
-                                    #             "GitHub-Mark-32px.png")
-                                    #     ),
-                                    # ),
                                     html.H1(
                                         "Utmadernas väderstation",
                                         style={"marginBottom": "0px",
@@ -201,8 +200,7 @@ def serve_layout():
                                     html.H6(get_last_timestamp_text(),
                                             style={'color': '#1b2444'}),
                                     html.H6(get_forecast_harvest_text(),
-                                            style={'color': '#1b2444'}),
-
+                                            style={'color': '#1b2444'})
                                 ]
                             )
                         ],
@@ -317,7 +315,7 @@ def serve_layout():
                             html.Div(
                                 [dcc.Graph(id="wind_rose_graph")],
                                 id="WindRoseGraphContainer",
-                                className="pretty_container four columns",
+                                className="pretty_container_wind four columns",
                             )
                         ],
                         className="pretty_container four columns",
@@ -325,6 +323,48 @@ def serve_layout():
                     ),
                     html.Div(
                         [
+                            html.Div(
+                                [
+                                    html.Div(
+                                        [
+                                            html.H6(get_forecast_harvest_info_box(target_weight=350),
+                                                    id="harvest_350"),
+                                            html.P("Målvikt: 350 g")
+                                        ],
+                                        id="id_350",
+                                        className="mini_container",
+                                    ),
+                                    html.Div(
+                                        [
+                                            html.H6(get_forecast_harvest_info_box(target_weight=400),
+                                                    id="harvest_400"),
+                                            html.P("Målvikt: 400 g")
+                                        ],
+                                        id="id_400",
+                                        className="mini_container",
+                                    ),
+                                    html.Div(
+                                        [
+                                            html.H6(get_forecast_harvest_info_box(target_weight=450),
+                                                    id="harvest_450"),
+                                            html.P("Målvikt: 450 g")
+                                        ],
+                                        id="id_450",
+                                        className="mini_container",
+                                    ),
+                                    html.Div(
+                                        [
+                                            html.H6(get_forecast_harvest_info_box(target_weight=500),
+                                                    id="harvest_500"),
+                                            html.P("Målvikt: 500 g")
+                                        ],
+                                        id="id_500",
+                                        className="mini_container",
+                                    ),
+                                ],
+                                id="zucchini-info-container",
+                                className="row container-display",
+                            ),
                             html.Div(
                                 [dcc.Graph(id="zucchini_graph")],
                                 id="zucchiniGraphContainer",
@@ -378,7 +418,8 @@ def filter_harvest_temperature(timing):
     df['meantemp'] = np.nan
     delta = pd.Timedelta(days=1)
     for row in df.itertuples():
-        boolean = row.timestamp <= df['timestamp'] <= (row.timestamp + delta)
+        boolean = (df['timestamp'] >= row.timestamp) & \
+                  (df['timestamp'] <= (row.timestamp + delta))
         df['meantemp'].iloc[row.Index] = np.nanmean(df.loc[boolean, 'outtemp'])
     return df
 
@@ -476,7 +517,7 @@ def make_figure(parameter, timing):
                 **FIGURE_KWARGS.get('fc'),
                 x=df_forecast["timestamp"],
                 y=df_forecast[y_parameter],
-                name='Prognos',
+                name='Prognos - SMHI',
             )
         )
         if parameter == 'rainh':
@@ -517,22 +558,29 @@ def make_zucchini_figure(timing):
         timing = 'week'
 
     layout_count = copy.deepcopy(layout)
-    y_parameter = 'zucchini_fc'
     df_selected = filter_harvest_temperature(timing)
-    df_selected[y_parameter] = zu_handler.calculate_array(
-        df_selected['meantemp'])
+    df_selected['zucchini_fc_350'] = zu_handler.calculate_array(
+        df_selected['meantemp'], target_weight=350)
+    df_selected['zucchini_fc_500'] = zu_handler.calculate_array(
+        df_selected['meantemp'], target_weight=500)
     data = [
         dict(
-            **FIGURE_KWARGS.get('zucchini_fc', {}),
+            **FIGURE_KWARGS.get('zucchini_fc_350', {}),
             x=df_selected["timestamp"],
-            y=df_selected[y_parameter],
-            name='Skördeprognos',
+            y=df_selected['zucchini_fc_350'],
+            name='Målvikt 350 g',
+        ),
+        dict(
+            **FIGURE_KWARGS.get('zucchini_fc_500', {}),
+            x=df_selected["timestamp"],
+            y=df_selected['zucchini_fc_500'],
+            name='Målvikt 500 g',
         )
     ]
 
-    layout_count["title"] = 'Prognos för skördningsvikter (zucchini)'
-    layout_count['yaxis']["title"] = 'gram'
-    if timing == 'day':
+    layout_count["title"] = 'Prognoser för skördningsvikter (zucchini)'
+    layout_count['yaxis']["title"] = 'Lägsta skördevikt (gram)'
+    if timing in {'day', 'days3'}:
         layout_count['xaxis']['tickformat'] = "%b-%d %H:%M"
 
     figure = dict(data=data, layout=layout_count)

@@ -43,7 +43,7 @@ input[type="radio" i] {
 }
 
 .Select-control {
-  background-color: #D4DBE8;
+  background-color: #1b2444;
   color: #9CB2D9;
   box-color: #1b2444;
 }
@@ -55,7 +55,7 @@ input[type="radio" i] {
 }
 
 .Select-menu-outer {
-  background-color: #D4DBE8;
+  background-color: #1b2444;
   color: #9CB2D9;
   box-color: #1b2444;
 }
@@ -77,6 +77,15 @@ input[type="radio" i] {
   padding: 15px;
   position: relative;
   box-shadow: 2px 2px 2px #131929;
+}
+
+.pretty_container_wind {
+  border-radius: 2px;
+  font-family: verdana;
+  background-color: #1b2444;
+  margin: 10px;
+  padding: 15px;
+  position: relative;
 }
 
 .mini_container {
@@ -195,6 +204,22 @@ input[type="radio" i] {
 }
 
 #id_presabs {
+  flex: 1;
+}
+
+#id_350 {
+  flex: 1;
+}
+
+#id_400 {
+  flex: 1;
+}
+
+#id_450 {
+  flex: 1;
+}
+
+#id_500 {
   flex: 1;
 }
 

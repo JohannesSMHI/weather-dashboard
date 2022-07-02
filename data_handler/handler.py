@@ -301,7 +301,7 @@ class ZucchiniForcast:
         temps = self.zz[temps_idx]
         temp_value = temps[(np.abs(temps - forcast_temp)).argmin()]
         value = self.xx[np.logical_and(temps_idx, self.zz == temp_value)][0]
-        return f'{weight_sign}{value} g'
+        return f'{weight_sign}{value}'
 
     def calculate_array(self, forcast_temp, target_weight=500):
         """Return harvest weight."""

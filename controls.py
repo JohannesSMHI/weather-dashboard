@@ -104,6 +104,36 @@ def get_line_kwargs():
     }
 
 
+def get_line_zu350_kwargs():
+    """Doc."""
+    return {
+        'type': 'scatter',
+        'mode': 'lines+markers',
+        'line': {
+            'shape': "spline",
+            'smoothing': 2,
+            'width': 1,
+            'color': "#02b305"
+        },
+        'marker': {'symbol': "circle-closed"}
+    }
+
+
+def get_line_zu500_kwargs():
+    """Doc."""
+    return {
+        'type': 'scatter',
+        'mode': 'lines+markers',
+        'line': {
+            'shape': "spline",
+            'smoothing': 2,
+            'width': 1,
+            'color': "#f06429"
+        },
+        'marker': {'symbol': "circle-closed"}
+    }
+
+
 def get_scatter_kwargs():
     """Doc."""
     return {
@@ -161,5 +191,6 @@ FIGURE_KWARGS = dict(
     rainherrory_fc=get_rain_mima_forecast_kwargs(),
     rainhmin_fc=get_rain_mima_forecast_kwargs(),
     rainhmax_fc=get_rain_mima_forecast_kwargs(),
-    zucchini_fc=get_line_kwargs(),
+    zucchini_fc_350=get_line_zu350_kwargs(),
+    zucchini_fc_500=get_line_zu500_kwargs(),
 )
