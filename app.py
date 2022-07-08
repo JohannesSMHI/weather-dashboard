@@ -155,9 +155,26 @@ def get_forecast_harvest_weight(target_weight=500):
         return '-'
 
 
-def get_forecast_harvest_text():
-    weight = get_forecast_harvest_weight(target_weight=350)
-    return f'Aktuell skördvikt (EKO-zucchini): {weight} - 350 g'
+def round_with_base(x, base=5):
+    return base * round(x/base)
+
+
+def get_forecast_harvest_eco_text():
+    weight = get_forecast_harvest_weight(target_weight=400)
+    try:
+        weight = round_with_base(int(weight))
+    except:
+        pass
+    return f'Aktuell skördvikt (EKO): {weight} - 400 g'
+
+
+def get_forecast_harvest_ip_text():
+    weight = get_forecast_harvest_weight(target_weight=500)
+    try:
+        weight = round_with_base(int(weight))
+    except:
+        pass
+    return f'Aktuell skördvikt (IP): {weight} - 500 g'
 
 
 def get_forecast_harvest_info_box(target_weight=500):
@@ -199,7 +216,9 @@ def serve_layout():
                                     ),
                                     html.H6(get_last_timestamp_text(),
                                             style={'color': '#1b2444'}),
-                                    html.H6(get_forecast_harvest_text(),
+                                    html.H6(get_forecast_harvest_eco_text(),
+                                            style={'color': '#1b2444'}),
+                                    html.H6(get_forecast_harvest_ip_text(),
                                             style={'color': '#1b2444'})
                                 ]
                             )
@@ -556,6 +575,9 @@ def make_zucchini_figure(timing):
     """Doc."""
     if timing not in ('day', 'days3', 'week'):
         timing = 'week'
+    delta_mapper = {'day': pd.Timedelta(days=1),
+                    'days3': pd.Timedelta(days=3),
+                    'week': pd.Timedelta(days=7)}
 
     layout_count = copy.deepcopy(layout)
     df_selected = filter_harvest_temperature(timing)
@@ -563,6 +585,11 @@ def make_zucchini_figure(timing):
         df_selected['meantemp'], target_weight=350)
     df_selected['zucchini_fc_500'] = zu_handler.calculate_array(
         df_selected['meantemp'], target_weight=500)
+
+    time_boolean = df_selected['timestamp'] <= (
+            df_selected['timestamp'].iloc[0] + delta_mapper.get(timing))
+    df_selected = df_selected.loc[time_boolean, :]
+
     data = [
         dict(
             **FIGURE_KWARGS.get('zucchini_fc_350', {}),
